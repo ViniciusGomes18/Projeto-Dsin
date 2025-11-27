@@ -13,7 +13,7 @@ Miguel Guarnetti - RA 1999154
 João Pedro Pereira Guerra - RA 2006484
 
 
-## Codigos necessarios para rodar as dependecias do Fron-End
+## Codigos necessarios para rodar as dependecias do Front-End
 
 npm install @expo/vector-icons@^15.0.3
 
