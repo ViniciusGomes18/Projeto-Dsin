@@ -1,0 +1,8 @@
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.csproj.AssemblyReference.cache
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\rpswa.dswa.cache.json
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.AssemblyInfoInputs.cache
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.AssemblyInfo.cs
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.csproj.CoreCompileInputs.cache
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\Guerra\Desktop\Conversor-de-talao-manual-Back-end--main\obj\Release\net8.0\DSIN.MvcApplicationPartsAssemblyInfo.cache
