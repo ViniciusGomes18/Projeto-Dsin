@@ -30,7 +30,6 @@ public sealed class JwtTokenGenerator
             new Claim(JwtRegisteredClaimNames.Sub, agent.Id.ToString()),
             new Claim(ClaimTypes.NameIdentifier, agent.Id.ToString()),
             new Claim(ClaimTypes.Name, agent.Name),
-            new Claim(ClaimTypes.Email, agent.Email),
             new Claim(ClaimTypes.Email, agent.Email)
         };
 
