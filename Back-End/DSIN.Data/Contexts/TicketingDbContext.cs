@@ -20,13 +20,11 @@ namespace DSIN.Data.Contexts
 
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-            // ===== Agents =====
             modelBuilder.Entity<Agent>(e =>
             {
                 e.ToTable("Agents");
                 e.HasKey(x => x.Id);
 
-                // Guid -> deixa o provider (Npgsql) mapear para uuid
                 e.Property(x => x.Id)
                     .ValueGeneratedNever();
 
@@ -37,7 +35,6 @@ namespace DSIN.Data.Contexts
                 e.HasIndex(x => x.Email).IsUnique();
             });
 
-            // ===== Drivers =====
             modelBuilder.Entity<Driver>(e =>
             {
                 e.ToTable("Drivers");
@@ -52,7 +49,6 @@ namespace DSIN.Data.Contexts
                 e.HasIndex(x => x.CPF);
             });
 
-            // ===== Vehicles =====
             modelBuilder.Entity<Vehicle>(e =>
             {
                 e.ToTable("Vehicles");
@@ -68,7 +64,6 @@ namespace DSIN.Data.Contexts
                 e.HasIndex(x => x.Plate);
             });
 
-            // ===== TicketBooks =====
             modelBuilder.Entity<TicketBook>(e =>
             {
                 e.ToTable("TicketBooks");
@@ -96,7 +91,7 @@ namespace DSIN.Data.Contexts
                 e.Property(x => x.TicketImageBase64).HasColumnType("text");
 
                 e.Property(x => x.Location).HasMaxLength(200);
-                // deixa o provider mapear o tipo de data/hora
+
                 e.Property(x => x.OccurredAt).IsRequired();
 
                 e.HasIndex(x => x.OccurredAt);

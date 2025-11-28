@@ -9,6 +9,7 @@ using DSIN.Business.Interfaces.IServices;
 using DSIN.Business.Services;
 using DSIN.Data.Repositories;
 using DSIN.Data.External;
+using DSIN.Business.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,7 @@ builder.Services.AddScoped<IDriverRepository, DriverRepository>();
 builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 builder.Services.AddScoped<ITicketBookRepository, TicketBookRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<JwtTokenGenerator>();
 
 // ---------- Serviços de Domínio / Aplicação ----------
 builder.Services.AddScoped<IAgentService, AgentService>();
