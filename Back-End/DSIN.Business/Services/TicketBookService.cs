@@ -2,6 +2,12 @@ using DSIN.Business.DTOs;
 using DSIN.Business.Interfaces.IRepositories;
 using DSIN.Business.Interfaces.IServices;
 using DSIN.Business.Models;
+using DSIN.Business.Validator;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace DSIN.Business.Services;
 
@@ -27,170 +33,68 @@ public sealed class TicketBookService : ITicketBookService
         _uow = uow;
     }
 
-    public async Task<TicketBookResponseDto> AnalyzeAsync(
-        Guid agentId,
-        string imageBase64,
-        CancellationToken ct)
+    public async Task<TicketBookResponseDto> AnalyzeAsync(Guid agentId, string imageBase64, CancellationToken ct)
     {
-        if (agentId == Guid.Empty)
-            throw new ArgumentException("AgentId inválido.", nameof(agentId));
-        if (string.IsNullOrWhiteSpace(imageBase64))
-            throw new ArgumentException("ImageBase64 é obrigatório.", nameof(imageBase64));
+        TicketValidator.ValidateAnalyzeRequest(agentId, imageBase64, ct);
 
-        // 1) Chama o OCR externo
-        var ocr = await _ocr.AnalyzeAsync(
-            new OcrExternalRequestDto { ImageBase64 = imageBase64 },
-            ct);
+        var ocr = await _ocr.AnalyzeAsync(new OcrExternalRequestDto { ImageBase64 = imageBase64 }, ct);
+        TicketValidator.ValidatePlate(ocr.Plate);
 
-        // 2) Garante/resolve o veículo pela placa
-        if (string.IsNullOrWhiteSpace(ocr.Plate))
-            throw new InvalidOperationException("OCR não retornou placa do veículo.");
-
-        var vehicle = await _vehicles.GetByPlateAsync(ocr.Plate, ct);
-        if (vehicle is null)
+        var vehicle = await _vehicles.GetByPlateAsync(ocr.Plate!, ct);
+        if (vehicle == null)
         {
-            var model = string.IsNullOrWhiteSpace(ocr.VehicleModel)
-                ? "Desconhecido"
-                : ocr.VehicleModel;
-
-            var color = string.IsNullOrWhiteSpace(ocr.VehicleColor)
-                ? "Desconhecido"
-                : ocr.VehicleColor;
-
-            vehicle = new Vehicle(
-                id: Guid.NewGuid(),
-                plate: ocr.Plate,
-                color: color,
-                model: model
-            );
+            vehicle = new Vehicle(Guid.NewGuid(), ocr.Plate!,
+                TicketValidator.Normalize(ocr.VehicleColor),
+                TicketValidator.Normalize(ocr.VehicleModel));
 
             await _vehicles.AddAsync(vehicle, ct);
         }
 
-        // 3) Garante/resolve o condutor (se vier do OCR)
         Driver? driver = null;
-        if (!string.IsNullOrWhiteSpace(ocr.DriverCpf) ||
-            !string.IsNullOrWhiteSpace(ocr.DriverName))
+        if (!string.IsNullOrWhiteSpace(ocr.DriverCpf))
+            driver = await _drivers.GetByCpfAsync(ocr.DriverCpf, ct);
+
+        if (driver == null && !string.IsNullOrWhiteSpace(ocr.DriverName))
         {
-            if (!string.IsNullOrWhiteSpace(ocr.DriverCpf))
-            {
-                driver = await _drivers.GetByCpfAsync(ocr.DriverCpf, ct);
-            }
-
-            if (driver is null && !string.IsNullOrWhiteSpace(ocr.DriverName))
-            {
-                driver = new Driver(
-                    id: Guid.NewGuid(),
-                    name: ocr.DriverName!,
-                    cpf: ocr.DriverCpf
-                );
-
-                await _drivers.AddAsync(driver, ct);
-            }
+            driver = new Driver(Guid.NewGuid(), ocr.DriverName, ocr.DriverCpf);
+            await _drivers.AddAsync(driver, ct);
         }
 
-        // 4) Cria o TicketBook com snapshots
-        var ticket = new TicketBook(
-            id: Guid.NewGuid(),
-            agentId: agentId,
-            vehicleId: vehicle.Id,
-            driverId: driver?.Id,
-            plateSnapshot: ocr.Plate,
-            vehicleModelSnapshot: ocr.VehicleModel,
-            vehicleColorSnapshot: ocr.VehicleColor,
-            driverNameSnapshot: ocr.DriverName,
-            driverCpfSnapshot: ocr.DriverCpf,
-            violationCode: ocr.ViolationCode,
-            violationDescription: ocr.ViolationDescription,
-            occurredAt: ocr.OccurredAt,
-            location: ocr.Location,
-            ticketImageBase64: imageBase64
-        );
+        var ticket = new TicketBook(Guid.NewGuid(), agentId, vehicle.Id, driver?.Id,
+            ocr.Plate, ocr.VehicleModel, ocr.VehicleColor,
+            ocr.DriverName, ocr.DriverCpf,
+            ocr.ViolationCode, ocr.ViolationDescription,
+            ocr.OccurredAt, ocr.Location, imageBase64);
 
         await _tickets.AddAsync(ticket, ct);
         await _uow.SaveChangesAsync(ct);
 
-        // 5) Retorna DTO para o front (se quiser exibir resumo na hora)
-        return new TicketBookResponseDto
-        {
-            AgentId = agentId,
-            Plate = ticket.PlateSnapshot,
-            VehicleModel = ticket.VehicleModelSnapshot,
-            VehicleColor = ticket.VehicleColorSnapshot,
-            ViolationCode = ticket.ViolationCode,
-            ViolationDescription = ticket.ViolationDescription,
-            OccurredAt = ticket.OccurredAt,
-            Location = ticket.Location,
-            DriverName = ticket.DriverNameSnapshot,
-            DriverCpf = ticket.DriverCpfSnapshot
-        };
+        return TicketBookMapper.ToResponse(ticket);
     }
 
-    public async Task<PagedResult<TicketBookSummaryDto>> ListByAgentAsync(
-        Guid agentId,
-        int skip,
-        int take,
-        CancellationToken ct)
+    public async Task<PagedResult<TicketBookSummaryDto>> ListByAgentAsync(Guid agentId, int skip, int take, CancellationToken ct)
     {
         if (agentId == Guid.Empty)
             throw new ArgumentException("AgentId inválido.", nameof(agentId));
-        if (take <= 0) take = 50;
-        if (take > 200) take = 200;
+
+        take = TicketValidator.NormalizeTake(take);
 
         var total = await _tickets.CountByAgentAsync(agentId, ct);
         var items = await _tickets.ListByAgentAsync(agentId, skip, take, ct);
 
-        var mapped = items.Select(t => new TicketBookSummaryDto
-        {
-            Id = t.Id,
-            AgentId = t.AgentId,
-            VehicleId = t.VehicleId,
-            DriverId = t.DriverId,
-
-            Plate = t.PlateSnapshot,
-            VehicleModel = t.VehicleModelSnapshot,
-            VehicleColor = t.VehicleColorSnapshot,
-            DriverName = t.DriverNameSnapshot,
-            DriverCpf = t.DriverCpfSnapshot,
-
-            ViolationCode = t.ViolationCode,
-            ViolationDescription = t.ViolationDescription,
-            OccurredAt = t.OccurredAt,
-            Location = t.Location
-        }).ToList();
-
         return new PagedResult<TicketBookSummaryDto>
         {
             Total = total,
-            Items = mapped
+            Items = items.Select(TicketBookMapper.ToSummary).ToList()
         };
     }
 
     public async Task<TicketBookDetailsDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Ticket Guid inválido.", nameof(id));
+
         var ticket = await _tickets.GetByIdAsync(id, ct);
-        if (ticket is null)
-            return null;
-    
-        return new TicketBookDetailsDto
-        {
-            Id = ticket.Id,
-            AgentId = ticket.AgentId,
-            VehicleId = ticket.VehicleId,
-            DriverId = ticket.DriverId,
-    
-            Plate = ticket.PlateSnapshot,
-            VehicleModel = ticket.VehicleModelSnapshot,
-            VehicleColor = ticket.VehicleColorSnapshot,
-            DriverName = ticket.DriverNameSnapshot,
-            DriverCpf = ticket.DriverCpfSnapshot,
-    
-            ViolationCode = ticket.ViolationCode,
-            ViolationDescription = ticket.ViolationDescription,
-            OccurredAt = ticket.OccurredAt,
-            Location = ticket.Location,
-    
-            TicketImageBase64 = ticket.TicketImageBase64 // se ainda não tiver, te passo como adicionar
-        };
+        return ticket == null ? null : TicketBookMapper.ToDetails(ticket);
     }
 }
