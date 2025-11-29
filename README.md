@@ -48,7 +48,16 @@
 
 └── README.md → Documentação principal
 ```
+---
+## Para rodar o projeto
 
+-> Copie a url do repositório
+
+-> abre o CMD
+```
+git clone https://github.com/ViniciusGomes18/Projeto-Dsin.git
+cd Projeto-Dsin
+```
 ---
 
 ## 🛠️ Tecnologias / Dependências (Front-End)
