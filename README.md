@@ -14,7 +14,7 @@ João Pedro Pereira Guerra - RA 2006484
 
 
 ## Codigos necessarios para rodar as dependecias do Front-End
-
+´´´
 npm install @expo/vector-icons@^15.0.3
 
 npm install expo@54.0.23
@@ -51,3 +51,5 @@ npx expo install expo-secure-store
 npx expo install react-native-safe-area-context
 
 npx expo install expo-status-bar
+
+´´´
